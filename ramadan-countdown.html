@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ramadan 1448 Countdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Inter:wght@200;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#080B16;
+    --depth:#141C34;
+    --gold:#C9A227;
+    --gold-dim:#6A5719;
+    --pale:#EDE8DA;
+    --muted:#707D9B;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  html,body{height:100%}
+
+  body{
+    background:
+      radial-gradient(120% 90% at 50% 8%, var(--depth) 0%, var(--ink) 62%),
+      var(--ink);
+    color:var(--pale);
+    font-family:"Inter",system-ui,-apple-system,sans-serif;
+    display:grid;
+    place-items:center;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* faint star field, drawn once, no animation */
+  .stars{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    opacity:.5;
+  }
+
+  .stage{
+    position:relative;
+    width:min(92vw, 78vmin);
+    aspect-ratio:1;
+    display:grid;
+    place-items:center;
+    text-align:center;
+  }
+
+  .ring{
+    position:absolute;
+    inset:0;
+    transform:rotate(-90deg);
+  }
+  .ring circle{
+    fill:none;
+    stroke-linecap:round;
+  }
+  .ring .track{stroke:var(--gold-dim);opacity:.28;stroke-width:.9}
+  .ring .arc{stroke:var(--gold);stroke-width:1.4;transition:stroke-dashoffset 1s linear}
+
+  .inner{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:clamp(14px,3.2vmin,40px);
+    padding:0 6%;
+  }
+
+  .eyebrow{
+    font-family:"Marcellus",Georgia,serif;
+    font-size:clamp(15px,2.4vmin,30px);
+    letter-spacing:.30em;
+    color:var(--gold);
+    text-indent:.30em;
+  }
+
+  .clock{
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    gap:clamp(10px,2.6vmin,34px);
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum" 1;
+  }
+
+  .unit{display:flex;flex-direction:column;align-items:center;gap:.45em;min-width:2.1ch}
+
+  .num{
+    font-weight:200;
+    font-size:clamp(46px,15vmin,190px);
+    line-height:.86;
+    letter-spacing:-.02em;
+  }
+
+  .name{
+    font-size:clamp(9px,1.5vmin,17px);
+    font-weight:400;
+    letter-spacing:.16em;
+    color:var(--muted);
+  }
+
+  .sep{
+    font-weight:200;
+    font-size:clamp(34px,10vmin,130px);
+    line-height:.86;
+    color:var(--gold-dim);
+    align-self:flex-start;
+  }
+
+  .note{
+    font-size:clamp(10px,1.5vmin,17px);
+    line-height:1.65;
+    color:var(--muted);
+    max-width:34ch;
+  }
+
+  /* arrival state */
+  .greeting{
+    font-family:"Marcellus",Georgia,serif;
+    font-size:clamp(40px,11vmin,150px);
+    line-height:1.05;
+    color:var(--pale);
+    letter-spacing:.02em;
+  }
+  .greeting-sub{
+    font-family:"Marcellus",Georgia,serif;
+    font-size:clamp(15px,2.4vmin,30px);
+    letter-spacing:.28em;
+    color:var(--gold);
+    text-indent:.28em;
+  }
+
+  .hidden{display:none}
+
+  .mark{
+    position:fixed;
+    bottom:clamp(16px,3.4vmin,44px);
+    left:0;right:0;
+    text-align:center;
+    font-size:clamp(10px,1.4vmin,16px);
+    letter-spacing:.24em;
+    color:var(--muted);
+    text-indent:.24em;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .ring .arc{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<canvas class="stars" id="stars"></canvas>
+
+<main class="stage">
+  <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+    <circle class="track" cx="50" cy="50" r="47.5"></circle>
+    <circle class="arc" id="arc" cx="50" cy="50" r="47.5"></circle>
+  </svg>
+
+  <!-- counting down -->
+  <div class="inner" id="counting">
+    <p class="eyebrow" id="eyebrow">Ramadan 1448</p>
+
+    <div class="clock" role="timer" aria-live="off">
+      <div class="unit"><span class="num" id="d">—</span><span class="name">days</span></div>
+      <span class="sep">:</span>
+      <div class="unit"><span class="num" id="h">—</span><span class="name">hours</span></div>
+      <span class="sep">:</span>
+      <div class="unit"><span class="num" id="m">—</span><span class="name">minutes</span></div>
+      <span class="sep">:</span>
+      <div class="unit"><span class="num" id="s">—</span><span class="name">seconds</span></div>
+    </div>
+
+    <p class="note" id="note"></p>
+  </div>
+
+  <!-- arrived -->
+  <div class="inner hidden" id="arrived">
+    <p class="greeting-sub">Ramadan 1448</p>
+    <h1 class="greeting" id="greeting">Ramadan Kareem</h1>
+  </div>
+</main>
+
+<p class="mark" id="mark">Mini Muslim Tales</p>
+
+<script>
+/* ------------------------------------------------------------------
+   EDIT THESE FOUR LINES AND NOTHING ELSE
+   ------------------------------------------------------------------
+   TARGET  the instant the countdown ends, in ISO 8601 with an offset.
+           +03:00 is Saudi Arabia time. Change the date here if the
+           moon sighting shifts it.
+   START   when the countdown began. This only controls how full the
+           gold arc looks — it has no effect on the numbers.
+------------------------------------------------------------------- */
+const TARGET   = "2027-02-07T00:00:00+03:00";
+const START    = "2026-09-11T00:00:00+03:00";
+const GREETING = "Ramadan Kareem";
+const CHANNEL  = "Mini Muslim Tales";
+/* ---------------------------------------------------------------- */
+
+const targetMs = new Date(TARGET).getTime();
+const startMs  = new Date(START).getTime();
+
+document.getElementById("greeting").textContent = GREETING;
+document.getElementById("mark").textContent = CHANNEL;
+
+const targetLabel = new Date(TARGET).toLocaleDateString("en-GB", {
+  day:"numeric", month:"long", year:"numeric", timeZone:"Asia/Riyadh"
+});
+document.getElementById("note").textContent =
+  "Expected " + targetLabel + ". The first day of Ramadan is confirmed by the sighting of the crescent moon and may shift by a day.";
+
+const arc = document.getElementById("arc");
+const CIRC = 2 * Math.PI * 47.5;
+arc.style.strokeDasharray = CIRC;
+
+const els = {
+  d: document.getElementById("d"),
+  h: document.getElementById("h"),
+  m: document.getElementById("m"),
+  s: document.getElementById("s")
+};
+const counting = document.getElementById("counting");
+const arrived  = document.getElementById("arrived");
+
+const pad = n => String(n).padStart(2, "0");
+
+function tick(){
+  // always recompute from the real clock, so the stream never drifts
+  const now = Date.now();
+  let left = targetMs - now;
+
+  if (left <= 0){
+    counting.classList.add("hidden");
+    arrived.classList.remove("hidden");
+    arc.style.strokeDashoffset = 0;
+    return;
+  }
+
+  const secs = Math.floor(left / 1000);
+  els.d.textContent = Math.floor(secs / 86400);
+  els.h.textContent = pad(Math.floor(secs / 3600) % 24);
+  els.m.textContent = pad(Math.floor(secs / 60) % 60);
+  els.s.textContent = pad(secs % 60);
+
+  const span = targetMs - startMs;
+  const done = Math.min(Math.max((now - startMs) / span, 0), 1);
+  arc.style.strokeDashoffset = CIRC * (1 - done);
+}
+
+tick();
+setInterval(tick, 1000);
+
+/* quiet star field — drawn once, never animated */
+(function stars(){
+  const c = document.getElementById("stars");
+  const x = c.getContext("2d");
+  function draw(){
+    const w = c.width  = innerWidth;
+    const h = c.height = innerHeight;
+    x.clearRect(0,0,w,h);
+    const count = Math.round((w*h)/14000);
+    for (let i=0;i<count;i++){
+      const px = Math.random()*w;
+      const py = Math.random()*h*0.92;
+      const r  = Math.random()*1.1 + 0.2;
+      x.globalAlpha = Math.random()*0.5 + 0.08;
+      x.fillStyle = Math.random() > 0.88 ? "#C9A227" : "#EDE8DA";
+      x.beginPath();
+      x.arc(px,py,r,0,Math.PI*2);
+      x.fill();
+    }
+  }
+  draw();
+  let t;
+  addEventListener("resize", () => { clearTimeout(t); t = setTimeout(draw, 250); });
+})();
+</script>
+</body>
+</html>
